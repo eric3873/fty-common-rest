@@ -548,7 +548,7 @@ pipeline {
                     branch 'master'
                     branch "release/*"
                     changeRequest()
-                }    
+                }
             }
             stages {
                 stage('Compile') {
