@@ -106,6 +106,7 @@ class UserInfo {
         std::string _login;
         bool _reauth;
         bool _reauthInitialized;
+        bool _byCookie;
 };
 
 // 1    contains chars from 'exclude'
