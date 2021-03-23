@@ -308,7 +308,7 @@ void check_user_permissions (
         } \
     } while (0)
 
-#define CHECK_USER_PERMISSIONS_OR_DIE_USECOOKIE(p, useCookie) \
+#define CHECK_USER_PERMISSIONS_OR_DIE_REJECT_COOKIE((p, rejectCookie) \
     do { \
         http_errors_t errors; \
         std::string __http_die__debug__ {""}; \
@@ -316,13 +316,13 @@ void check_user_permissions (
             __http_die__debug__ = {__FILE__}; \
             __http_die__debug__ += ": " + std::to_string (__LINE__); \
         } \
-        check_user_permissions (user, request, p, __http_die__debug__, errors, useCookie); \
+        check_user_permissions (user, request, p, __http_die__debug__, errors, rejectCookie); \
         if (errors.http_code != HTTP_OK) { \
             http_die_error (errors); \
         } \
     } while (0)
 
-#define CHECK_USER_PERMISSIONS_OR_DIE_AUDIT_USECOOKIE(p, audit, useCookie) \
+#define CHECK_USER_PERMISSIONS_OR_DIE_AUDIT_REJECT_COOKIE(p, audit, rejectCookie) \
     do { \
         http_errors_t errors; \
         std::string __http_die__debug__ {""}; \
@@ -330,7 +330,7 @@ void check_user_permissions (
             __http_die__debug__ = {__FILE__}; \
             __http_die__debug__ += ": " + std::to_string (__LINE__); \
         } \
-        check_user_permissions (user, request, p, __http_die__debug__, errors, useCookie); \
+        check_user_permissions (user, request, p, __http_die__debug__, errors, rejectCookie); \
         if (errors.http_code != HTTP_OK) { \
             if ((audit) != nullptr) { \
                 log_info_audit ("%s", audit); \
