@@ -343,10 +343,17 @@ check_user_permissions (
         const tnt::HttpRequest &request,
         const std::map <BiosProfile, std::string> &permissions,
         const std::string debug,
-        http_errors_t &errors
+        http_errors_t &errors,
+        bool rejectCookie
         )
 {
     http_errors_t error;
+
+    if(rejectCookie && user.byCookie()) {
+        log_info ("Auth by cookie is not allowed");
+        http_add_error (debug, errors, "not-authorized", "");
+        return;
+    }
 
     if (permissions.count (user.profile ()) != 1) {
         // actually it is not an error :)
