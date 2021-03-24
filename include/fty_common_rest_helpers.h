@@ -309,7 +309,7 @@ void check_user_permissions (
         } \
     } while (0)
 
-#define CHECK_USER_PERMISSIONS_OR_DIE_REJECT_COOKIE((p, rejectCookie) \
+#define CHECK_USER_PERMISSIONS_OR_DIE_REJECT_COOKIE(p, rejectCookie) \
     do { \
         http_errors_t errors; \
         std::string __http_die__debug__ {""}; \
