@@ -19,12 +19,25 @@
     =========================================================================
 */
 
-#ifndef FTY_COMMON_REST_H_H_INCLUDED
-#define FTY_COMMON_REST_H_H_INCLUDED
+#pragma once
 
-//  Include the project library file
-#include "fty_common_rest_library.h"
+//  Opaque class structures to allow forward references
+//  These classes are stable or legacy and built in all releases
+typedef struct _fty_common_rest_helpers_t fty_common_rest_helpers_t;
+#define FTY_COMMON_REST_HELPERS_T_DEFINED
+typedef struct _fty_common_rest_sasl_t fty_common_rest_sasl_t;
+#define FTY_COMMON_REST_SASL_T_DEFINED
+typedef struct _fty_common_rest_tokens_t fty_common_rest_tokens_t;
+#define FTY_COMMON_REST_TOKENS_T_DEFINED
+typedef struct _fty_common_rest_utils_web_t fty_common_rest_utils_web_t;
+#define FTY_COMMON_REST_UTILS_WEB_T_DEFINED
+typedef struct _fty_common_rest_audit_log_t fty_common_rest_audit_log_t;
+#define FTY_COMMON_REST_AUDIT_LOG_T_DEFINED
 
-//  Add your own public definitions here, if you need them
 
-#endif
+//  Public classes, each with its own header file
+#include "fty_common_rest_helpers.h"
+#include "fty_common_rest_sasl.h"
+#include "fty_common_rest_tokens.h"
+#include "fty_common_rest_utils_web.h"
+#include "fty_common_rest_audit_log.h"

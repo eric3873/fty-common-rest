@@ -55,17 +55,16 @@
  *
  */
 
-#ifndef FTY_COMMON_WEB_INCLUDE_TOKENS_H
-#define FTY_COMMON_WEB_INCLUDE_TOKENS_H
+#pragma once
 
 #ifdef __cplusplus
 
-#include <string>
-#include <sodium.h>
-#include <set>
-#include <map>
-#include <deque>
 #include "fty_common_rest_helpers.h"
+#include <deque>
+#include <map>
+#include <set>
+#include <sodium.h>
+#include <string>
 
 //! Maximum length of the message stored in the token
 //#define MESSAGE_LEN (3 * sizeof (long int) + sizeof (int) + 32)
@@ -75,29 +74,31 @@
 //! Length of the ciphertext
 #define CIPHERTEXT_LEN (crypto_secretbox_MACBYTES + MESSAGE_LEN)
 
-struct Cipher {
-    long int valid_until;
-    int used;
+struct Cipher
+{
+    long int      valid_until;
+    int           used;
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     unsigned char key[crypto_secretbox_KEYBYTES];
 };
 
 //! Class to generate and verify tokens
-class tokens {
+class tokens
+{
 private:
-    std::deque<Cipher> keys;
-    std::set<std::string> revoked;
+    std::deque<Cipher>                   keys;
+    std::set<std::string>                revoked;
     std::multimap<long int, std::string> revoked_queue;
-    void clean_revoked();
-    void regen_keys (long int expires_in);
-    static const uint32_t MESSAGE_LEN;
+    void                                 clean_revoked();
+    void                                 regen_keys(long int expires_in);
+    static const uint32_t                MESSAGE_LEN;
+
 public:
     //! Singleton get_instance method
     static tokens* get_instance();
     /**
      * \brief Generates new token
      *
-     * @param valid How long should be token valid
      * @return BiosProfile - Anonymous only if generation of token fails
      */
     BiosProfile gen_token(const char* user, std::string& token, long int* expires_in);
@@ -107,7 +108,8 @@ public:
      * \return BiosProfile enum, where BiosProfile::Anonymous means verification failed
      * \return long int expInSec, the time before token expire if not BiosProfile::Anonymous
      */
-    BiosProfile verify_token(const std::string token, long int* expInSec, long int* uid = NULL, long int* gid = NULL, char **user_name = NULL);
+    BiosProfile verify_token(const std::string token, long int* expInSec, long int* uid = nullptr,
+        long int* gid = nullptr, char** user_name = nullptr);
     //! Invalidates selected token
     void revoke(const std::string token);
     /**
@@ -117,5 +119,3 @@ public:
 };
 
 #endif // __cplus_plus
-
-#endif // FTY_COMMON_WEB_INCLUDE_TOKENS_H

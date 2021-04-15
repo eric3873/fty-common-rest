@@ -24,10 +24,7 @@
  * \author Michal Hrusecky <MichalHrusecky@Eaton.com>
  * \brief Not yet documented file
  */
-#ifndef FTY_COMMON_WEB_INCLUDE_SASL_H
-#define FTY_COMMON_WEB_INCLUDE_SASL_H
+#pragma once
 
+bool authenticate(const char *user, const char *pass, const char* service = nullptr);
 
-bool authenticate(const char *user, const char *pass, const char* service = NULL);
-
-#endif // FTY_COMMON_WEB_INCLUDE_SASL_H
