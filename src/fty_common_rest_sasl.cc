@@ -25,30 +25,30 @@
  * \author Alena Chernikava <AlenaChernikava@Eaton.com>
  * \brief Not yet documented file
  */
-#include <sasl/sasl.h>
-#include <stdio.h>
-
-#include <errno.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <sys/un.h>
-#include <sys/uio.h>
-#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sasl/sasl.h>
 #include <stdexcept>
+#include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include "fty_common_rest_sasl.h"
 
 // TODO: move to some common header
 // https://gcc.gnu.org/onlinedocs/cpp/Stringification.html
 #define xstr(a) str(a)
-#define str(a) #a
+#define str(a)  #a
 
-//TODO CHECK HOW DO IT IN A CLEAN WAY
+// TODO CHECK HOW DO IT IN A CLEAN WAY
 #ifndef SASLAUTHD_MUX
-#define SASLAUTHD_MUX   /var/run/saslauthd/mux
+#define SASLAUTHD_MUX / var / run / saslauthd / mux
 #endif
-//ENDOF TODO
+// ENDOF TODO
 #ifndef SASLAUTHD_MUX
 #error Build with -DSASLAUTHD_MUX=/path/to/saslauthd/mux
 #else
@@ -60,20 +60,21 @@
  * data, without any guarantees. If the function returns
  * -1, the vector wasn't completely written.
  **************************************************************/
-int retry_writev(int fd, struct iovec *iov, int iovcnt) {
-    int n;               /* return value from writev() */
-    int i;               /* loop counter */
-    int written;         /* bytes written so far */
-    static int iov_max;  /* max number of iovec entries */
+static int retry_writev(int fd, struct iovec* iov, int iovcnt)
+{
+    int        n;       /* return value from writev() */
+    int        i;       /* loop counter */
+    int        written; /* bytes written so far */
+    static int iov_max; /* max number of iovec entries */
 
 #ifdef MAXIOV
     iov_max = MAXIOV;
 #else
-# ifdef IOV_MAX
+#ifdef IOV_MAX
     iov_max = IOV_MAX;
-# else
+#else
     iov_max = 8192;
-# endif
+#endif
 #endif
 
     written = 0;
@@ -89,7 +90,7 @@ int retry_writev(int fd, struct iovec *iov, int iovcnt) {
             return written;
         }
 
-        n = writev(fd, iov, iovcnt > iov_max ? iov_max : iovcnt);
+        n = int(writev(fd, iov, iovcnt > iov_max ? iov_max : iovcnt));
 
         if (n == -1) {
             if (errno == EINVAL && iov_max > 10) {
@@ -108,9 +109,9 @@ int retry_writev(int fd, struct iovec *iov, int iovcnt) {
         }
 
         for (i = 0; i < iovcnt; i++) {
-            if ((int) iov[i].iov_len > n) {
-                iov[i].iov_base = (char *)iov[i].iov_base + n;
-                iov[i].iov_len -= n;
+            if (int(iov[i].iov_len) > n) {
+                iov[i].iov_base = static_cast<char*>(iov[i].iov_base) + n;
+                iov[i].iov_len -= size_t(n);
                 break;
             }
 
@@ -129,17 +130,17 @@ int retry_writev(int fd, struct iovec *iov, int iovcnt) {
  * Keep calling the read() system call with 'fd', 'buf', and 'nbyte'
  * until all the data is read in or an error occurs.
  */
-int retry_read(int fd, void *inbuf, unsigned nbyte) {
+static int retry_read(int fd, void* inbuf, unsigned nbyte)
+{
     if (nbyte == 0) {
         return 0;
     }
 
-    int n;
-    int nread = 0;
-    char *buf = (char *)inbuf;
+    int   nread = 0;
+    char* buf   = reinterpret_cast<char*>(inbuf);
 
     for (;;) {
-        n = read(fd, buf, nbyte);
+        int n = int(read(fd, buf, nbyte));
         if (n == -1 || n == 0) {
             if (errno == EINTR || errno == EAGAIN) {
                 continue;
@@ -149,28 +150,29 @@ int retry_read(int fd, void *inbuf, unsigned nbyte) {
 
         nread += n;
 
-        if (n >= (int) nbyte) {
+        if (n >= int(nbyte)) {
             return nread;
         }
 
         buf += n;
-        nbyte -= n;
+        nbyte -= unsigned(n);
     }
 }
 
-bool authenticate(const char *userid, const char *passwd, const char *service) {
+bool authenticate(const char* userid, const char* passwd, const char* service)
+{
     if (!userid || !passwd) {
         return false;
     }
 
-    char response[1024];
-    char query[8192];
-    char *query_end = query;
-    int s;
+    char               response[1024];
+    char               query[8192];
+    char*              query_end = query;
+    int                s;
     struct sockaddr_un srvaddr;
-    int r;
-    unsigned short count;
-    char pwpath[sizeof(srvaddr.sun_path)];
+    int                r;
+    unsigned short     count;
+    char               pwpath[sizeof(srvaddr.sun_path)];
 
     if (!service) {
         service = "fty";
@@ -183,12 +185,11 @@ bool authenticate(const char *userid, const char *passwd, const char *service) {
      *
      * count authid count password count service count realm
      */
-    unsigned short u_len, p_len, s_len, r_len;
 
-    u_len = htons(strlen(userid));
-    p_len = htons(strlen(passwd));
-    s_len = htons(strlen(service));
-    r_len = htons(0);
+    size_t u_len = htons(uint16_t(strlen(userid)));
+    size_t p_len = htons(uint16_t(strlen(passwd)));
+    size_t s_len = htons(uint16_t(strlen(service)));
+    size_t r_len = htons(0);
 
     memcpy(query_end, &u_len, sizeof(unsigned short));
     query_end += sizeof(unsigned short);
@@ -214,24 +215,22 @@ bool authenticate(const char *userid, const char *passwd, const char *service) {
     s = socket(AF_UNIX, SOCK_STREAM, 0);
     if (s == -1) {
         throw std::runtime_error("Can't create SASL socket!");
-        return false;
     }
 
-    memset((char *)&srvaddr, 0, sizeof(srvaddr));
+    memset(&srvaddr, 0, sizeof(srvaddr));
     srvaddr.sun_family = AF_UNIX;
     strncpy(srvaddr.sun_path, pwpath, sizeof(srvaddr.sun_path));
 
-    r = connect(s, (struct sockaddr *) &srvaddr, sizeof(srvaddr));
+    r = connect(s, reinterpret_cast<sockaddr*>(&srvaddr), sizeof(srvaddr));
     if (r == -1) {
         throw std::runtime_error("Can't connect to SASL!");
-        return false;
     }
 
     {
 
         struct iovec iov[8];
 
-        iov[0].iov_len = query_end - query;
+        iov[0].iov_len  = size_t(query_end - query);
         iov[0].iov_base = query;
 
         if (retry_writev(s, iov, 1) == -1) {
@@ -244,7 +243,7 @@ bool authenticate(const char *userid, const char *passwd, const char *service) {
          *
          * count result
          */
-        if (retry_read(s, &count, sizeof(count)) < (int) sizeof(count)) {
+        if (retry_read(s, &count, sizeof(count)) < int(sizeof(count))) {
             fprintf(stderr, "size read failed\n");
             return false;
         }
@@ -256,7 +255,7 @@ bool authenticate(const char *userid, const char *passwd, const char *service) {
             return false;
         }
 
-        count = (int)sizeof(response) < count ? sizeof(response) : count;
+        count = int(sizeof(response)) < count ? sizeof(response) : count;
         if (retry_read(s, response, count) < count) {
             close(s);
             fprintf(stderr, "read failed\n");
@@ -270,7 +269,6 @@ bool authenticate(const char *userid, const char *passwd, const char *service) {
             return true;
         }
         fprintf(stderr, "saslauthd authentication failed: '%s'\n", response);
-
     }
     return false;
 }
