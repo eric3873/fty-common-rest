@@ -1,3 +1,4 @@
 usr/include/*
-usr/lib/*/libfty_common_rest.so
 usr/lib/*/pkgconfig/libfty_common_rest.pc
+usr/lib/*/libfty_common_rest.so
+usr/share/cmake/*

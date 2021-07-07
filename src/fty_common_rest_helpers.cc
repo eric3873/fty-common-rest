@@ -18,20 +18,17 @@
  *
  */
 
+#include "fty_common_rest_helpers.h"
+#include "fty_common_rest_utils_web.h"
 #include <cassert>
-#include <cxxtools/regex.h>
-#include <unistd.h> // make "readlink" available on ARM
-#include <tntdb.h>
 #include <cstdlib>
-
-#include <fty_common_db_dbpath.h>
 #include <fty_common_db_asset.h>
+#include <fty_common_db_dbpath.h>
 #include <fty_common_macros.h>
 #include <fty_common_str_defs.h> // EV_LICENSE_DIR, EV_DATA_DIR
-
-#include "fty_common_rest_utils_web.h"
-#include "fty_common_rest_helpers.h"
-//#include "shared/log.h"
+#include <tntdb.h>
+#include <unistd.h> // make "readlink" available on ARM
+#include <regex>
 
 /**
  * TODO: This list should not be precompiled once and forever in the
@@ -46,8 +43,8 @@
  * Alternately, this can be done during the webserver service unit
  * startup, to generate a file under /tmp with needed current data.
  **/
-static
-std::map <std::string, std::string> systemctl_service_names = {
+// clang-format off
+static std::map <std::string, std::string> systemctl_service_names = {
     // external (copied from 'fty-core.git/tools/systemctl' wrapper)
     { "mariadb", "" },
     { "mysql", "" },
@@ -111,35 +108,38 @@ std::map <std::string, std::string> systemctl_service_names = {
     // added value agents / generic name
     { "etn-licensing", "" }
 };
+// clang-format on
 
-bool
-systemctl_valid_service_name (std::string& service_name)
+bool systemctl_valid_service_name(std::string& service_name)
 {
-    if (service_name.empty ())
+    if (service_name.empty())
         return true; // for 'list' operation service name is empty
 
-    auto find = systemctl_service_names.find (service_name);
-    if (find != systemctl_service_names.end ()) {
-        if (!find->second.empty ())
-            service_name.assign (find->second);
+    auto find = systemctl_service_names.find(service_name);
+    if (find != systemctl_service_names.end()) {
+        if (!find->second.empty())
+            service_name.assign(find->second);
         return true;
     }
     return false;
 }
 
-void
-systemctl_get_service_names (std::vector <std::string>& v)
+void systemctl_get_service_names(std::vector<std::string>& v)
 {
     for (const auto& i : systemctl_service_names) {
-        v.push_back (i.first);
+        v.push_back(i.first);
     }
 }
 
-const char* UserInfo::toString() {
+const char* UserInfo::toString()
+{
     switch (_profile) {
-        case  BiosProfile::Dashboard: return "Dashboard";
-        case  BiosProfile::Admin: return "Administrator";
-        case  BiosProfile::Anonymous: return "Anonymous";
+        case BiosProfile::Dashboard:
+            return "Dashboard";
+        case BiosProfile::Admin:
+            return "Administrator";
+        case BiosProfile::Anonymous:
+            return "Anonymous";
     }
     /* Currently one use-case is to return a string in profiles.
        This routine could reasonably return NULL as an error here,
@@ -149,80 +149,90 @@ const char* UserInfo::toString() {
     return "N/A";
 }
 
-bool
-check_element_identifier (const char *param_name, const std::string& param_value, uint32_t& element_id, http_errors_t& errors) {
-    assert (param_name);
-    if (param_value.empty ()) {
-        http_add_error ("", errors,"request-param-required", param_name);
+bool check_element_identifier(
+    const char* param_name, const std::string& param_value, uint32_t& element_id, http_errors_t& errors)
+{
+    assert(param_name);
+    if (param_value.empty()) {
+        http_add_error("", errors, "request-param-required", param_name);
         return false;
     }
 
-    int64_t eid = 0;
-    const char *prohibited = "_@%;\"";
-    for (unsigned int a = 0; a < strlen (prohibited); ++a) {
-        if (param_value.find (prohibited[a]) != std::string::npos) {
-            std::string err = TRANSLATE_ME("value '%s' contains prohibited characters (%s)", param_value.c_str(), prohibited);
-            if (err.length () > 255) {
-                log_error ("Error too long: value '%s' contains prohibited characters (%s)", param_value.c_str(), prohibited);
+    int64_t     eid        = 0;
+    const char* prohibited = "_@%;\"";
+    for (unsigned int a = 0; a < strlen(prohibited); ++a) {
+        if (param_value.find(prohibited[a]) != std::string::npos) {
+            std::string err =
+                TRANSLATE_ME("value '%s' contains prohibited characters (%s)", param_value.c_str(), prohibited);
+            if (err.length() > 255) {
+                log_error(
+                    "Error too long: value '%s' contains prohibited characters (%s)", param_value.c_str(), prohibited);
             }
             std::string expected = TRANSLATE_ME("valid identifier");
-            http_add_error ("", errors, "request-param-bad", param_name, err.c_str (), expected.c_str ());
+            http_add_error("", errors, "request-param-bad", param_name, err.c_str(), expected.c_str());
             return false;
         }
     }
-    eid = DBAssets::name_to_asset_id (param_value);
+    eid = DBAssets::name_to_asset_id(param_value);
     if (eid == -1) {
         std::string err = TRANSLATE_ME("value '%s' is not valid identifier", param_value.c_str());
-        if (err.length () > 255) {
-            log_error ("Error too long: value '%s' is not valid identifier", param_value.c_str());
+        if (err.length() > 255) {
+            log_error("Error too long: value '%s' is not valid identifier", param_value.c_str());
         }
         std::string expected = TRANSLATE_ME("existing identifier");
-        http_add_error ("", errors, "request-param-bad", param_name, err.c_str (), expected.c_str ());
+        http_add_error("", errors, "request-param-bad", param_name, err.c_str(), expected.c_str());
         return false;
     }
-    element_id = eid;
+    element_id = uint32_t(eid);
     return true;
 }
 
-typedef int (t_check_func)(int letter);
+typedef int(t_check_func)(int letter);
 
-bool
-check_func_text (const char *param_name, const std::string& param_value, http_errors_t& errors,  size_t minlen, size_t maxlen, t_check_func func) {
-    if (param_value.size () < minlen) {
-        http_add_error ("", errors, "request-param-bad", param_name,
-                        std::string ("value '").append (param_value).append ("'").append (" is too short").c_str (),
-                        std::string ("string from ").append (std::to_string (minlen)).append (" to ").append (std::to_string(maxlen)).append (" characters.").c_str ());
+[[maybe_unused]] static bool check_func_text(const char* param_name, const std::string& param_value, http_errors_t& errors,
+    size_t minlen, size_t maxlen, t_check_func func)
+{
+    if (param_value.size() < minlen) {
+        http_add_error("", errors, "request-param-bad", param_name,
+            std::string("value '").append(param_value).append("'").append(" is too short").c_str(),
+            std::string("string from ")
+                .append(std::to_string(minlen))
+                .append(" to ")
+                .append(std::to_string(maxlen))
+                .append(" characters.")
+                .c_str());
         return false;
     }
-    if (param_value.size () > maxlen) {
-        http_add_error ("", errors, "request-param-bad", param_name,
-                        std::string ("value '").append (param_value).append ("'").append (" is too long").c_str (),
-                        std::string ("string from ").append (std::to_string (minlen)).append (" to ").append (std::to_string(maxlen)).append (" characters.").c_str ());
+    if (param_value.size() > maxlen) {
+        http_add_error("", errors, "request-param-bad", param_name,
+            std::string("value '").append(param_value).append("'").append(" is too long").c_str(),
+            std::string("string from ")
+                .append(std::to_string(minlen))
+                .append(" to ")
+                .append(std::to_string(maxlen))
+                .append(" characters.")
+                .c_str());
         return false;
     }
     for (const auto letter : param_value) {
-        if (!func (letter)) {
-        http_add_error ("", errors, "request-param-bad", param_name,
-                        std::string ("value '").append (param_value).append ("'").append (" contains invalid characters").c_str (),
-                        "valid string");
-        return false;
-
+        if (!func(letter)) {
+            http_add_error("", errors, "request-param-bad", param_name,
+                std::string("value '").append(param_value).append("'").append(" contains invalid characters").c_str(),
+                "valid string");
+            return false;
         }
-
     }
     return true;
 }
 
-bool
-check_regex_text (const char *param_name, const std::string& param_value, const std::string& regex, http_errors_t& errors)
+bool check_regex_text(
+    const char* param_name, const std::string& param_value, const std::string& regex, http_errors_t& errors)
 {
-    cxxtools::Regex R (regex, REG_EXTENDED | REG_ICASE);
-    if (! R.match (param_value)) {
-        std::string msg_received = TRANSLATE_ME ("value '%s' is not valid", param_value.c_str ());
-        std::string msg_expected = TRANSLATE_ME ("string matching %s regular expression", regex.c_str ());
-        http_add_error ("", errors, "request-param-bad", param_name,
-                        msg_received.c_str (),
-                        msg_expected.c_str ());
+    std::regex r(regex, std::regex::extended | std::regex::icase);
+    if (!std::regex_match(param_value, r)) {
+        std::string msg_received = TRANSLATE_ME("value '%s' is not valid", param_value.c_str());
+        std::string msg_expected = TRANSLATE_ME("string matching %s regular expression", regex.c_str());
+        http_add_error("", errors, "request-param-bad", param_name, msg_received.c_str(), msg_expected.c_str());
         return false;
     }
     return true;
@@ -231,36 +241,28 @@ check_regex_text (const char *param_name, const std::string& param_value, const 
 // 1    contains chars from 'exclude'
 // 0    does not
 // -1   error (not a utf8 string etc...)
-int
-utf8_contains_chars (const std::string& input, const std::vector <char>& exclude)
+int utf8_contains_chars(const std::string& input, const std::vector<char>& exclude)
 {
     // for now works with (excludes) 1 byte (ascii) chars only (_@% etc...)
     // easily extendable to exclude >1 byte characters (unicode chars) if needed
 
     unsigned int pos = 0;
 
-    while (pos < input.length ()) {
-        const char c = input [pos];
-        if ((c & 0x80 ) == 0) {     // lead bit is zero, must be a single ascii
+    while (pos < input.length()) {
+        const char c = input[pos];
+        if ((c & 0x80) == 0) { // lead bit is zero, must be a single ascii
             for (const auto& item : exclude)
                 if (c == item)
                     return 1;
             pos = pos + 1;
-        }
-        else
-        if ((c & 0xE0 ) == 0xC0 ) {  // 110x xxxx (2 octets)
+        } else if ((c & 0xE0) == 0xC0) { // 110x xxxx (2 octets)
             pos = pos + 2;
-        }
-        else
-        if ((c & 0xF0 ) == 0xE0 ) { // 1110 xxxx (3 octets)
+        } else if ((c & 0xF0) == 0xE0) { // 1110 xxxx (3 octets)
             pos = pos + 3;
-        }
-        else
-        if ((c & 0xF8 ) == 0xF0 ) { // 1111 0xxx (4 octets)
+        } else if ((c & 0xF8) == 0xF0) { // 1111 0xxx (4 octets)
             pos = pos + 4;
-        }
-        else {
-            log_error ("Unrecognized utf8 lead byte '%x' in string '%s'", c, input.c_str ());
+        } else {
+            log_error("Unrecognized utf8 lead byte '%x' in string '%s'", c, input.c_str());
             return -1;
         }
     }
@@ -268,158 +270,155 @@ utf8_contains_chars (const std::string& input, const std::vector <char>& exclude
     return 0;
 }
 
-static const std::vector <char> single_byte_excludes = {
-    '\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\x08', '\x09',
-    '\x0a', '\x0b', '\x0c', '\x0d', '\x0e', '\x0e', '\x0f',
+static const std::vector<char> single_byte_excludes = {
+    '\x00',
+    '\x01',
+    '\x02',
+    '\x03',
+    '\x04',
+    '\x05',
+    '\x06',
+    '\x07',
+    '\x08',
+    '\x09',
+    '\x0a',
+    '\x0b',
+    '\x0c',
+    '\x0d',
+    '\x0e',
+    '\x0e',
+    '\x0f',
 };
 
-bool check_asset_name (const std::string& param_name, const std::string& name, http_errors_t &errors) {
-    if (utf8_contains_chars (name, single_byte_excludes) == 1) {
-        std::string err =  TRANSLATE_ME ("valid asset name (characters not allowed: \\x00 ... \\x0f");
-        http_add_error ("", errors, "request-param-bad", param_name.c_str (), name.c_str (), err.c_str ());
+bool check_asset_name(const std::string& param_name, const std::string& name, http_errors_t& errors)
+{
+    if (utf8_contains_chars(name, single_byte_excludes) == 1) {
+        std::string err = TRANSLATE_ME("valid asset name (characters not allowed: \\x00 ... \\x0f");
+        http_add_error("", errors, "request-param-bad", param_name.c_str(), name.c_str(), err.c_str());
         return false;
     }
     return true;
 }
 
-bool
-check_alert_rule_name (const std::string& param_name, const std::string& rule_name, http_errors_t& errors)
+bool check_alert_rule_name(const std::string& param_name, const std::string& rule_name, http_errors_t& errors)
 {
     // assumption: rule name == rule_name@asset_name, where rule_name is always plain old ASCII
-    std::string::size_type index = rule_name.find ("@");
+    std::string::size_type index = rule_name.find("@");
     if (index == std::string::npos) {
-        bool old_way = check_regex_text (param_name.c_str (), rule_name, _ALERT_RULE_NAME_RE_STR, errors);
+        bool old_way = check_regex_text(param_name.c_str(), rule_name, ALERT_RULE_NAME_RE_STR, errors);
         if (!old_way)
             return false;
         return true;
     }
 
-    std::string rule = rule_name.substr (0, index);
-    log_debug ("rule == '%s'", rule.c_str ());
-    bool is_rule = check_regex_text (param_name.c_str (), rule, _ALERT_RULE_NAME_RE_STR, errors);
+    std::string rule = rule_name.substr(0, index);
+    log_debug("rule == '%s'", rule.c_str());
+    bool is_rule = check_regex_text(param_name.c_str(), rule, ALERT_RULE_NAME_RE_STR, errors);
     if (!is_rule)
         return false;
 
-    std::string asset_name = rule_name.substr (index + 1, std::string::npos);
-    log_debug ("asset name == '%s'", asset_name.c_str ());
-    bool is_asset_name = check_asset_name (param_name, asset_name, errors);
+    std::string asset_name = rule_name.substr(index + 1, std::string::npos);
+    log_debug("asset name == '%s'", asset_name.c_str());
+    bool is_asset_name = check_asset_name(param_name, asset_name, errors);
     if (!is_asset_name)
         return false;
 
     return true;
 }
 
-bool
-check_alert_just_rule_part (const std::string& param_name, const std::string& rule_name, http_errors_t& errors)
+bool check_alert_just_rule_part(const std::string& param_name, const std::string& rule_name, http_errors_t& errors)
 {
-    bool is_rule = check_regex_text (param_name.c_str (), rule_name, _ALERT_RULE_NAME_RE_STR, errors);
+    bool is_rule = check_regex_text(param_name.c_str(), rule_name, ALERT_RULE_NAME_RE_STR, errors);
     if (!is_rule)
         return false;
 
     return true;
 }
 
-static bool
-s_isDELETE (const tnt::HttpRequest &request)
+static bool s_isDELETE(const tnt::HttpRequest& request)
 {
-    return request.getMethod () == "DELETE";
+    return request.getMethod() == "DELETE";
 }
 
-static bool
-s_isPUT (const tnt::HttpRequest &request)
+static bool s_isPUT(const tnt::HttpRequest& request)
 {
-    return request.getMethod () == "PUT";
+    return request.getMethod() == "PUT";
 }
 
-static bool
-s_in (const std::string &haystack, char needle)
+static bool s_in(const std::string& haystack, char needle)
 {
-    return haystack.find (needle) != std::string::npos;
+    return haystack.find(needle) != std::string::npos;
 }
 
-void
-check_user_permissions (
-        const UserInfo &user,
-        const tnt::HttpRequest &request,
-        const std::map <BiosProfile, std::string> &permissions,
-        const std::string debug,
-        http_errors_t &errors,
-        bool rejectCookie
-        )
+void check_user_permissions(const UserInfo& user, const tnt::HttpRequest& request,
+    const std::map<BiosProfile, std::string>& permissions, const std::string debug, http_errors_t& errors, bool rejectCookie)
 {
     http_errors_t error;
-
+    
     if(rejectCookie && user.byCookie()) {
         log_info ("Auth by cookie is not allowed");
         http_add_error (debug, errors, "not-authorized", "");
         return;
     }
-
-    if (permissions.count (user.profile ()) != 1) {
+    
+    if (permissions.count(user.profile()) != 1) {
         // actually it is not an error :)
-        log_info ("Permission not defined for given profile");
-        http_add_error (debug, errors, "not-authorized", "");
+        log_info("Permission not defined for given profile");
+        http_add_error(debug, errors, "not-authorized", "");
         return;
     }
 
-    const std::string perm = permissions.at (user.profile ());
+    const std::string perm = permissions.at(user.profile());
 
-    if (  (request.isMethodGET  () && s_in (perm, 'R'))
-        ||(request.isMethodPOST () && (s_in (perm, 'C') || s_in (perm, 'E')))
-        ||(s_isPUT (request)       && s_in (perm, 'U'))
-        ||(s_isDELETE (request)    && s_in (perm, 'D'))
-       )
-    {
+    if ((request.isMethodGET() && s_in(perm, 'R')) ||
+        (request.isMethodPOST() && (s_in(perm, 'C') || s_in(perm, 'E'))) || (s_isPUT(request) && s_in(perm, 'U')) ||
+        (s_isDELETE(request) && s_in(perm, 'D'))) {
         errors.http_code = HTTP_OK;
         return;
     }
 
-    http_add_error (debug, errors, "not-authorized", "");
+    http_add_error(debug, errors, "not-authorized", "");
     return;
 }
 
-char*
-get_current_db_initialized_file (void)
+char* get_current_db_initialized_file(void)
 {
-    char *current_db_initalized_file = NULL;
-    char *env = getenv (EV_DB_INITIALIZED_DIR);
+    char* current_db_initalized_file = nullptr;
+    char* env                        = getenv(EV_DB_INITIALIZED_DIR);
 
-    int rv = asprintf (&current_db_initalized_file, "%s/fty-db-ready", env ? env : "/var/run");
-    if ( rv == -1 ) {
+    int rv = asprintf(&current_db_initalized_file, "%s/fty-db-ready", env ? env : "/var/run");
+    if (rv == -1) {
         if (current_db_initalized_file) { // should asprintf failed due to other reasons than OOM
             free(current_db_initalized_file);
         }
-        return NULL;
+        return nullptr;
     }
     return current_db_initalized_file;
 }
 
-char*
-get_current_license_file (void)
+char* get_current_license_file(void)
 {
-    char *current_license = NULL;
-    char *env = getenv (EV_LICENSE_DIR);
+    char* current_license = nullptr;
+    char* env             = getenv(EV_LICENSE_DIR);
 
-    int rv = asprintf (&current_license, "%s/current", env ? env : "/usr/share/fty/license");
-    if ( rv == -1 ) {
-        return NULL;
+    int rv = asprintf(&current_license, "%s/current", env ? env : "/usr/share/fty/license");
+    if (rv == -1) {
+        return nullptr;
     }
     return current_license;
 }
 
-char*
-get_accepted_license_file (void)
+char* get_accepted_license_file(void)
 {
-    char *accepted_license = NULL;
-    char *env = getenv (EV_DATA_DIR);
+    char* accepted_license = nullptr;
+    char* env              = getenv(EV_DATA_DIR);
 
-    if (asprintf (&accepted_license, "%s/license", env ? env : "/var/lib/fty/fty-eula" ) == -1) {
-        return NULL;
+    if (asprintf(&accepted_license, "%s/license", env ? env : "/var/lib/fty/fty-eula") == -1) {
+        return nullptr;
     }
     return accepted_license;
 }
-char*
-get_current_license_version (const char* license_file)
+char* get_current_license_version(const char* license_file)
 {
     // ASSUMPTION: the symlink to the text of the licence is: /XXX
     // $ ls -l /XXX
@@ -434,17 +433,17 @@ get_current_license_version (const char* license_file)
     //
     // ssize_t readlink(const char *pathname, char *buf, size_t bufsiz);
 
-    char *buff = (char *) malloc (sizeof(char)*513);
-    memset(buff, 0, sizeof(char)*513);
-    int rv = readlink (license_file, buff, sizeof(char)*512);
+    char* buff = static_cast<char*>(malloc(sizeof(char) * 513));
+    memset(buff, 0, sizeof(char) * 513);
+    ssize_t rv = readlink(license_file, buff, sizeof(char) * 512);
     //
     // On success, these calls return the number of bytes placed in buf.
     // On error, -1 is returned and errno is set to indicate the error.
     //
-    if ( rv == -1 ) {
-        log_error ("Cannot read symlink for license");
-        free (buff);
-        return NULL;
+    if (rv == -1) {
+        log_error("Cannot read symlink for license");
+        free(buff);
+        return nullptr;
     }
     buff[rv] = '\0';
     return buff;
@@ -454,10 +453,9 @@ get_current_license_version (const char* license_file)
 // "version" : "/usr/share/fty/license/1.0"
 // if there's no / in inp, then it's noop
 // if so, then it returns character AFTER last /
-const char*
-basename2 (const char *inp)
+const char* basename2(const char* inp)
 {
-    const char *sep = strrchr (inp, '/');
+    const char* sep = strrchr(inp, '/');
     if (!sep)
         return inp;
     return sep + 1;

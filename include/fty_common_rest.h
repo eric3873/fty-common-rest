@@ -19,12 +19,11 @@
     =========================================================================
 */
 
-#ifndef FTY_COMMON_REST_H_H_INCLUDED
-#define FTY_COMMON_REST_H_H_INCLUDED
+#pragma once
 
-//  Include the project library file
-#include "fty_common_rest_library.h"
-
-//  Add your own public definitions here, if you need them
-
-#endif
+//  Public classes
+#include "fty_common_rest_helpers.h"
+#include "fty_common_rest_sasl.h"
+#include "fty_common_rest_tokens.h"
+#include "fty_common_rest_utils_web.h"
+#include "fty_common_rest_audit_log.h"

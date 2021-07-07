@@ -24,21 +24,16 @@
  * \author Michal Vyskocil <MichalVyskocil@Eaton.com>
  * \brief  REST helpers
  */
-#ifndef FTY_COMMON_WEB_INCLUDE_HELPERS_H_
-#define FTY_COMMON_WEB_INCLUDE_HELPERS_H_
+#pragma once
 
 #ifdef __cplusplus
 
+#include "fty_common_rest_utils_web.h"
 #include <string>
 #include <tnt/httprequest.h>
-#include "fty_common_rest_utils_web.h"
 
-bool
-systemctl_valid_service_name (std::string& service_name);
-
-void
-systemctl_get_service_names (std::vector <std::string>& v);
-
+bool systemctl_valid_service_name(std::string& service_name);
+void systemctl_get_service_names(std::vector<std::string>& v);
 
 /*!
  \brief BiosProfile enum - defines levels of permissions
@@ -48,10 +43,11 @@ systemctl_get_service_names (std::vector <std::string>& v);
     and the best is to assign meaningless constants here.
 
 */
-enum struct BiosProfile {
-    Anonymous = -1,             // Not authorized users
-    Dashboard = 0,              // Dashboard profile
-    Admin = 3                   // Admin profile
+enum struct BiosProfile
+{
+    Anonymous = -1, // Not authorized users
+    Dashboard = 0,  // Dashboard profile
+    Admin     = 3   // Admin profile
 };
 
 /*!
@@ -60,60 +56,108 @@ enum struct BiosProfile {
  stores various information about User
 
 */
-class UserInfo {
+class UserInfo
+{
 
-    public:
-        /*!\brief default constructor for UserInfo
-        */
-        UserInfo ():
-            _profile {BiosProfile::Anonymous},
-            _uid {-1},
-            _gid {-1},
-            _reauth {false},
-            _reauthInitialized {false},
-            _byCookie {false}
-        {};
+public:
+    /*!\brief default constructor for UserInfo
+     */
+    UserInfo()
+        : _profile{BiosProfile::Anonymous}
+        , _uid{-1}
+        , _gid{-1}
+        , _reauth{false}
+        , _reauthInitialized{false}
+        , _byCookie {false}
+    {
+    }
 
-        BiosProfile profile () const {return _profile;}
-        void profile (BiosProfile profile) {_profile = profile;}
+    BiosProfile profile() const
+    {
+        return _profile;
+    }
+    void profile(BiosProfile profile)
+    {
+        _profile = profile;
+    }
 
-        long int uid () const {return _uid;}
-        void uid (long int uid) {_uid = uid;}
+    long int uid() const
+    {
+        return _uid;
+    }
+    void uid(long int uid)
+    {
+        _uid = uid;
+    }
 
-        long int gid () const {return _gid;}
-        void gid (long int gid) {_gid = gid;}
+    long int gid() const
+    {
+        return _gid;
+    }
+    void gid(long int gid)
+    {
+        _gid = gid;
+    }
 
-        std::string login () const {return _login;}
-        void login (const std::string& login) {_login = login;}
+    std::string login() const
+    {
+        return _login;
+    }
+    void login(const std::string& login)
+    {
+        _login = login;
+    }
+    
+    bool byCookie () const
+    {
+        return _byCookie;
+    }
+    
+    void byCookie (bool byCookie) 
+    {
+        _byCookie = byCookie;
+    }
 
-        bool byCookie () const {return _byCookie;}
-        void byCookie (bool byCookie) {_byCookie = byCookie;}
+    /* Get or set the reauth flag */
+    bool reauth() const
+    {
+        return _reauth;
+    }
+    void reauth(bool reauthval)
+    {
+        _reauth            = reauthval;
+        _reauthInitialized = true;
+    }
+    /* Did someone set reauth to a specific value yet? */
+    bool reauthInitialized() const
+    {
+        return _reauthInitialized;
+    }
+    /* Set a fallback default - only if no auth module had set a specific value yet */
+    void reauthDefault(bool reauthval)
+    {
+        if (!_reauthInitialized) {
+            reauth(reauthval);
+        }
+    }
 
-        /* Get or set the reauth flag */
-        bool reauth () const {return _reauth;}
-        void reauth (bool reauthval) {_reauth = reauthval; _reauthInitialized = true;}
-        /* Did someone set reauth to a specific value yet? */
-        bool reauthInitialized () const {return _reauthInitialized;}
-        /* Set a fallback default - only if no auth module had set a specific value yet */
-        void reauthDefault (bool reauthval) { if (!_reauthInitialized) {reauth(reauthval); } }
+    const char* toString();
 
-        const char* toString ();
+protected:
+    BiosProfile _profile;
+    long int    _uid;
+    long int    _gid;
+    std::string _login;
+    bool        _reauth;
+    bool        _reauthInitialized;
+    bool        _byCookie;
 
-    protected:
-        BiosProfile _profile;
-        long int _uid;
-        long int _gid;
-        std::string _login;
-        bool _reauth;
-        bool _reauthInitialized;
-        bool _byCookie;
 };
 
 // 1    contains chars from 'exclude'
 // 0    does not
 // -1   error (not a utf8 string etc...)
-int
-utf8_contains_chars (const std::string& input, const std::vector <char>& exclude);
+int utf8_contains_chars(const std::string& input, const std::vector<char>& exclude);
 
 /*!
  \brief Perform error checking and extraction of element identifier from std::string
@@ -126,8 +170,8 @@ utf8_contains_chars (const std::string& input, const std::vector <char>& exclude
     true on success, element_id is assigned the converted element identifier
     false on failure, errors are updated (exactly one item is added to structure)
 */
-bool
-check_element_identifier (const char *param_name, const std::string& param_value, uint32_t& element_id, http_errors_t& errors);
+bool check_element_identifier(
+    const char* param_name, const std::string& param_value, uint32_t& element_id, http_errors_t& errors);
 
 /*!
   \brief macro for typical usage of check_element_identifier. Webserver dies with bad-param if
@@ -136,30 +180,30 @@ check_element_identifier (const char *param_name, const std::string& param_value
   \param[in]     fromuser        variable containing string comming from user/network
   \param[out]    checked         variable fo be assigned with checked content
 */
-#define check_element_identifier_or_die(name, fromuser, checked) \
-{  \
-    http_errors_t errors; \
-    if (! check_element_identifier (name, fromuser, checked, errors)) { \
-        http_die_error (errors); \
-    } \
-}
+#define check_element_identifier_or_die(name, fromuser, checked)                                                       \
+    {                                                                                                                  \
+        http_errors_t errors;                                                                                          \
+        if (!check_element_identifier(name, fromuser, checked, errors)) {                                              \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+    }
 
-#define check_element_identifier_or_die_audit(name, fromuser, checked, audit) \
-{  \
-    http_errors_t errors; \
-    if (! check_element_identifier (name, fromuser, checked, errors)) { \
-        if ((audit) != nullptr) { \
-            log_error_audit ("%s", audit); \
-        } \
-        http_die_error (errors); \
-    } \
-}
+#define check_element_identifier_or_die_audit(name, fromuser, checked, audit)                                          \
+    {                                                                                                                  \
+        http_errors_t errors;                                                                                          \
+        if (!check_element_identifier(name, fromuser, checked, errors)) {                                              \
+            if ((audit) != nullptr) {                                                                                  \
+                log_error_audit("%s", audit);                                                                          \
+            }                                                                                                          \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+    }
 
 /*!
   \brief Check whether string matches regexp (case insensitive, extended regexp).
 */
-bool
-check_regex_text (const char *param_name, const std::string& param_value, const std::string& regex, http_errors_t& errors);
+bool check_regex_text(
+    const char* param_name, const std::string& param_value, const std::string& regex, http_errors_t& errors);
 
 /*!
   \brief macro for typical usage of check_regex_text. Webserver dies with bad-param if
@@ -169,30 +213,30 @@ check_regex_text (const char *param_name, const std::string& param_value, const 
   \param[out]    checked         variable fo be assigned with checked content
   \param[in]     regex           regex (extended|icase) for variable checking
 */
-#define check_regex_text_or_die(name, fromuser, checked, regexp) \
-{  \
-    http_errors_t errors; \
-    if (check_regex_text (name, fromuser, regexp, errors)) { \
-        checked = fromuser; \
-    } else { \
-        http_die_error (errors); \
-    } \
-}
+#define check_regex_text_or_die(name, fromuser, checked, regexp)                                                       \
+    {                                                                                                                  \
+        http_errors_t errors;                                                                                          \
+        if (check_regex_text(name, fromuser, regexp, errors)) {                                                        \
+            checked = fromuser;                                                                                        \
+        } else {                                                                                                       \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+    }
 
-#define check_regex_text_or_die_audit(name, fromuser, checked, regexp, audit) \
-{  \
-    http_errors_t errors; \
-    if (check_regex_text (name, fromuser, regexp, errors)) { \
-        checked = fromuser; \
-    } else { \
-        if ((audit) != nullptr) { \
-            log_error_audit ("%s", audit); \
-        } \
-        http_die_error (errors); \
-    } \
-}
+#define check_regex_text_or_die_audit(name, fromuser, checked, regexp, audit)                                          \
+    {                                                                                                                  \
+        http_errors_t errors;                                                                                          \
+        if (check_regex_text(name, fromuser, regexp, errors)) {                                                        \
+            checked = fromuser;                                                                                        \
+        } else {                                                                                                       \
+            if ((audit) != nullptr) {                                                                                  \
+                log_error_audit("%s", audit);                                                                          \
+            }                                                                                                          \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+    }
 
-#define _ALERT_RULE_NAME_RE_STR "^[-_.a-z0-9]{1,255}$"
+#define ALERT_RULE_NAME_RE_STR "^[-_.a-z0-9]{1,255}$"
 /*!
   \brief macro to check the alert name
   \param[in]     name            name of the parameter from rest api call
@@ -200,35 +244,35 @@ check_regex_text (const char *param_name, const std::string& param_value, const 
   \param[out]    checked         variable fo be assigned with checked content
 */
 
-#define check_alert_rule_name_or_die(name, fromuser, checked) \
-{  \
-    http_errors_t errors; \
-    if (check_regex_text (name, fromuser, _ALERT_RULE_NAME_RE_STR, errors)) { \
-        checked = fromuser; \
-    } else { \
-        http_die_error (errors); \
-    } \
-}
+#define check_alert_rule_name_or_die(name, fromuser, checked)                                                          \
+    {                                                                                                                  \
+        http_errors_t errors;                                                                                          \
+        if (check_regex_text(name, fromuser, ALERT_RULE_NAME_RE_STR, errors)) {                                        \
+            checked = fromuser;                                                                                        \
+        } else {                                                                                                       \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+    }
 
-#define check_alert_rule_name_or_die_audit(name, fromuser, checked, audit) \
-{  \
-    http_errors_t errors; \
-    if (check_regex_text (name, fromuser, _ALERT_RULE_NAME_RE_STR, errors)) { \
-        checked = fromuser; \
-    } else { \
-        if ((audit) != nullptr) { \
-            log_info_audit ("%s", audit); \
-        } \
-        http_die_error (errors); \
-    } \
-}
+#define check_alert_rule_name_or_die_audit(name, fromuser, checked, audit)                                             \
+    {                                                                                                                  \
+        http_errors_t errors;                                                                                          \
+        if (check_regex_text(name, fromuser, ALERT_RULE_NAME_RE_STR, errors)) {                                        \
+            checked = fromuser;                                                                                        \
+        } else {                                                                                                       \
+            if ((audit) != nullptr) {                                                                                  \
+                log_info_audit("%s", audit);                                                                           \
+            }                                                                                                          \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+    }
 
 // checks if it's       '<rule_name>@<asset_name>' format -> validates <asset_name> with regard to unicode
 //        if it's       just <rule_name>                  -> validates the old way (regex)
-bool check_alert_rule_name (const std::string& param_name, const std::string& rule_name, http_errors_t& errors);
+bool check_alert_rule_name(const std::string& param_name, const std::string& rule_name, http_errors_t& errors);
 
 // checks just rule name
-bool check_alert_just_rule_part (const std::string& param_name, const std::string& rule_name, http_errors_t& errors);
+bool check_alert_just_rule_part(const std::string& param_name, const std::string& rule_name, http_errors_t& errors);
 
 /*!
  \brief Check valid asset name
@@ -240,7 +284,7 @@ bool check_alert_just_rule_part (const std::string& param_name, const std::strin
     false on failure, errors are updated (exactly one item is added to structure)
 
 */
-bool check_asset_name (const std::string& param_name, const std::string& name, http_errors_t &errors);
+bool check_asset_name(const std::string& param_name, const std::string& name, http_errors_t& errors);
 
 /*!
  * \brief Check user permissions
@@ -269,44 +313,39 @@ bool check_asset_name (const std::string& param_name, const std::string& name, h
  * });
  *
  */
-void check_user_permissions (
-        const UserInfo &user,
-        const tnt::HttpRequest &request,
-        const std::map <BiosProfile, std::string> &permissions,
-        const std::string debug,
-        http_errors_t &errors,
-        bool rejectCookie = false //to be changed to reject cookie
-        );
+void check_user_permissions(const UserInfo& user, const tnt::HttpRequest& request,
+    const std::map<BiosProfile, std::string>& permissions, const std::string debug, http_errors_t& errors, bool rejectCookie = false); //to be changed to reject cookie
 
-#define CHECK_USER_PERMISSIONS_OR_DIE(p) \
-    do { \
-        http_errors_t errors; \
-        std::string __http_die__debug__ {""}; \
-        if (::getenv ("BIOS_LOG_LEVEL") && !strcmp (::getenv ("BIOS_LOG_LEVEL"), "LOG_DEBUG")) { \
-            __http_die__debug__ = {__FILE__}; \
-            __http_die__debug__ += ": " + std::to_string (__LINE__); \
-        } \
-        check_user_permissions (user, request, p, __http_die__debug__, errors); \
-        if (errors.http_code != HTTP_OK) { \
-            http_die_error (errors); \
-        } \
+#define CHECK_USER_PERMISSIONS_OR_DIE(p)                                                                               \
+    do {                                                                                                               \
+        http_errors_t errors;                                                                                          \
+        std::string   __http_die__debug__{""};                                                                         \
+        if (::getenv("BIOS_LOG_LEVEL") && !strcmp(::getenv("BIOS_LOG_LEVEL"), "LOG_DEBUG")) {                          \
+            __http_die__debug__ = {__FILE__};                                                                          \
+            __http_die__debug__ += ": " + std::to_string(__LINE__);                                                    \
+        }                                                                                                              \
+        check_user_permissions(user, request, p, __http_die__debug__, errors);                                         \
+        if (errors.http_code != HTTP_OK) {                                                                             \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
+
     } while (0)
 
-#define CHECK_USER_PERMISSIONS_OR_DIE_AUDIT(p, audit) \
-    do { \
-        http_errors_t errors; \
-        std::string __http_die__debug__ {""}; \
-        if (::getenv ("BIOS_LOG_LEVEL") && !strcmp (::getenv ("BIOS_LOG_LEVEL"), "LOG_DEBUG")) { \
-            __http_die__debug__ = {__FILE__}; \
-            __http_die__debug__ += ": " + std::to_string (__LINE__); \
-        } \
-        check_user_permissions (user, request, p, __http_die__debug__, errors); \
-        if (errors.http_code != HTTP_OK) { \
-            if ((audit) != nullptr) { \
-                log_info_audit ("%s", audit); \
-            } \
-            http_die_error (errors);\
-        } \
+#define CHECK_USER_PERMISSIONS_OR_DIE_AUDIT(p, audit)                                                                  \
+    do {                                                                                                               \
+        http_errors_t errors;                                                                                          \
+        std::string   __http_die__debug__{""};                                                                         \
+        if (::getenv("BIOS_LOG_LEVEL") && !strcmp(::getenv("BIOS_LOG_LEVEL"), "LOG_DEBUG")) {                          \
+            __http_die__debug__ = {__FILE__};                                                                          \
+            __http_die__debug__ += ": " + std::to_string(__LINE__);                                                    \
+        }                                                                                                              \
+        check_user_permissions(user, request, p, __http_die__debug__, errors);                                         \
+        if (errors.http_code != HTTP_OK) {                                                                             \
+            if ((audit) != nullptr) {                                                                                  \
+                log_info_audit("%s", audit);                                                                           \
+            }                                                                                                          \
+            http_die_error(errors);                                                                                    \
+        }                                                                                                              \
     } while (0)
 
 #define CHECK_USER_PERMISSIONS_OR_DIE_REJECT_COOKIE(p, rejectCookie) \
@@ -341,13 +380,11 @@ void check_user_permissions (
     } while (0)
 
 // Helper function to work with server status
-char* get_current_db_initialized_file (void);
+char* get_current_db_initialized_file(void);
 // Helper function to work with license
-char* get_current_license_file (void);
-char* get_accepted_license_file (void);
-char* get_current_license_version (const char* license_file);
-const char* basename2 (const char *inp);
+char*       get_current_license_file(void);
+char*       get_accepted_license_file(void);
+char*       get_current_license_version(const char* license_file);
+const char* basename2(const char* inp);
 
 #endif //__cplus_plus
-
-#endif // FTY_COMMON_WEB_INCLUDE_HELPERS_H_
