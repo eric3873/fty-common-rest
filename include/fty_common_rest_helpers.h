@@ -328,7 +328,6 @@ void check_user_permissions(const UserInfo& user, const tnt::HttpRequest& reques
         if (errors.http_code != HTTP_OK) {                                                                             \
             http_die_error(errors);                                                                                    \
         }                                                                                                              \
-
     } while (0)
 
 #define CHECK_USER_PERMISSIONS_OR_DIE_AUDIT(p, audit)                                                                  \
