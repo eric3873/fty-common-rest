@@ -28,7 +28,7 @@
 
 #include "fty_common_rest_audit_log.h"
 
-Ftylog AuditLogManager::_auditlog{"audit/rest", FTY_COMMON_LOGGING_DEFAULT_CFG};
+Ftylog AuditLogManager::_auditlog = Ftylog("audit/rest", FTY_COMMON_LOGGING_DEFAULT_CFG);
 
 //  return audit logger
 Ftylog* AuditLogManager::getInstance()
