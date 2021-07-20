@@ -28,28 +28,39 @@
 
 #include "fty_common_rest_audit_log.h"
 
-Ftylog AuditLogManager::_auditlog = Ftylog("audit/rest", FTY_COMMON_LOGGING_DEFAULT_CFG);
+#define AUDIT_LOGGER_NAME "audit/rest"
+
+Ftylog AuditLogManager::_auditlog = Ftylog(AUDIT_LOGGER_NAME, FTY_COMMON_LOGGING_DEFAULT_CFG);
+
+// ISSUE: audit logs go silent due to MDC management
+// WORKAROUND: always reload logger
+void AuditLogManager::reloadAuditLogger()
+{
+    _auditlog.change(AUDIT_LOGGER_NAME, FTY_COMMON_LOGGING_DEFAULT_CFG);
+}
 
 //  return audit logger
 Ftylog* AuditLogManager::getInstance()
 {
+    reloadAuditLogger();
     return &_auditlog;
 }
 
 void AuditLogManager::setAuditLogContext(
     const std::string token, const std::string username, const int userId, const std::string ip)
 {
-    Ftylog::clearContext();
-    // Prepare context params for audit-log
-    std::hash<std::string>             hash_token;
-    size_t                             contextToken = hash_token(token);
+    std::hash<std::string> hasher;
+    std::size_t hashedToken = hasher(token);
+
+    // Prepare Mapped Diagnostic Context (MDC) for audit
     std::map<std::string, std::string> contextParam;
-    contextParam.insert(std::make_pair("sessionid", std::to_string(contextToken)));
+    contextParam.insert(std::make_pair("sessionid", std::to_string(hashedToken)));
     contextParam.insert(std::make_pair("username", username));
     contextParam.insert(std::make_pair("uid", std::to_string(userId)));
     contextParam.insert(std::make_pair("IP", ip));
 
-    // Set the fty-log context
+    // Set the MDC context
+    Ftylog::clearContext();
     Ftylog::setContext(contextParam);
 }
 

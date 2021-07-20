@@ -52,6 +52,8 @@ private:
     AuditLogManager() = default;
     static Ftylog _auditlog;
 
+    static void reloadAuditLogger();
+
 public:
     // Return singleton Audit Ftylog instance
     static Ftylog* getInstance();
