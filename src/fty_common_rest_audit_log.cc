@@ -53,6 +53,7 @@ void AuditLogManager::setAuditLogContext(
     std::size_t hashedToken = hasher(token);
 
     // Prepare Mapped Diagnostic Context (MDC) for audit
+    // Note: sessionId, see MDC equiv. code in 42ity:fty-rest.git my_profile.ecpp
     std::map<std::string, std::string> contextParam;
     contextParam.insert(std::make_pair("sessionid", std::to_string(hashedToken)));
     contextParam.insert(std::make_pair("username", username));
