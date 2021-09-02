@@ -52,6 +52,8 @@ private:
     AuditLogManager() = default;
     static Ftylog _auditlog;
 
+    static void reloadAuditLogger();
+
 public:
     // Return singleton Audit Ftylog instance
     static Ftylog* getInstance();
@@ -61,6 +63,7 @@ public:
      * @param token The token
      * @param username The user name
      * @param userId The user id
+     * @param ip The ip address
      */
     static void setAuditLogContext(
         const std::string token, const std::string username, const int userId, const std::string ip);
