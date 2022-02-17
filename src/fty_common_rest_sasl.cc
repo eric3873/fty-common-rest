@@ -255,7 +255,7 @@ bool authenticate(const char* userid, const char* passwd, const char* service)
             return false;
         }
 
-        count = int(sizeof(response)) < count ? sizeof(response) : count;
+        count = (int(sizeof(response) - 1) < count) ? (sizeof(response) - 1) : count;
         if (retry_read(s, response, count) < count) {
             close(s);
             fprintf(stderr, "read failed\n");
